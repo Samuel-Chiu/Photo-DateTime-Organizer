@@ -10,6 +10,8 @@ I accomplished this with:
 
 The 1st Goal was accomplished in photoOrganizerScript.py 
 
+## ------------------------------------------------------------
+
 New set of goals for this codebase: 
   1. Organize a much larger set of photos.
        - Specifically I want to organize a folder with a bunch of subfolders. From these Subfolders I want all images
@@ -22,7 +24,7 @@ New set of goals for this codebase:
 
   4. A second new folder with subfolders matching origina folder but with relabeled photos.
 
-  ## ------------------------------------------------------------------------------------------------------------------------------
+## ------------------------------------------------------------
 
   Additional Goals: 
 
