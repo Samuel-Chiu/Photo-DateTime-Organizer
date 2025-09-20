@@ -94,14 +94,14 @@ def main():
     
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
-    base_directory = os.path.join(script_dir, "TesterImages")
+    base_directory = script_dir
 
     for path, folders, files in os.walk(base_directory):
         for folder in folders:
             folder_name = f"{folder}"
             lowercaseName = folder_name.lower()
 
-            image_folder = os.path.join(script_dir, "TesterImages")
+            image_folder = os.path.join(script_dir, folder_name)
 
             output_folder = os.path.join(script_dir, f"{lowercaseName}Sorted")
             os.makedirs(output_folder, exist_ok=True)
