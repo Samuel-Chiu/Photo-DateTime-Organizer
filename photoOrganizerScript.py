@@ -98,6 +98,11 @@ def main():
 
     for path, folders, files in os.walk(base_directory):
         for folder in folders:
+
+            if folder.endswith("Sorted"):
+                continue
+
+
             folder_name = f"{folder}"
             lowercaseName = folder_name.lower()
 
@@ -163,7 +168,7 @@ def main():
                 else: 
                     idFormat= str(idNum)
 
-                id = date + "-" + idFormat
+                id = lowercaseName + "-" + date + "-" + idFormat
 
                 imageDict["id"] = id
 
@@ -179,16 +184,16 @@ def main():
                 
             #----------------------------------------------------------------------------------------------------
 
-            fieldnames = imageDict.keys()
+                fieldnames = imageDict.keys()
 
-            csv_filename = os.path.join(script_dir, "image_data.csv")
+                csv_filename = os.path.join(output_folder, f"{lowercaseName}_image_data.csv")
 
-            with open(csv_filename, mode='w', newline='') as file:
-                writer = csv.DictWriter(file, fieldnames=fieldnames)
-                writer.writeheader()  # Write the header row
-                writer.writerows(image_data)  # Write all data rows
+                with open(csv_filename, mode='w', newline='') as file:
+                    writer = csv.DictWriter(file, fieldnames=fieldnames)
+                    writer.writeheader()  # Write the header row
+                    writer.writerows(image_data)  # Write all data rows
 
-            print(f"Data successfully written to {csv_filename}")
+                print(f"Data successfully written to {csv_filename}")
 
 if __name__ == "__main__":
     main()
