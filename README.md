@@ -1,6 +1,6 @@
 Welcome to my Photo Database Sorting Repository!
 
-The 1st Goal Of this Codebase was to organize some photos
+The 1st Goal Of this Codebase was to organize some photos, currently complete and available to the public!
 
 I accomplished this with:
   1. Take a mess of photos and extract their metadata
