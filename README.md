@@ -14,7 +14,7 @@ The Goal was accomplished in photoOrganizerScript.py
 
 1. Install required dependencies detailed in the requirements.txt file.
 
-This can be accomplished with "pip install -r requirements.txt" on the command line
+  This can be accomplished with "pip install -r requirements.txt" on the command line
 
 2. Place the photoorganizer script in the folder with images
 
