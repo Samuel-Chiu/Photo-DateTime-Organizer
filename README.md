@@ -16,7 +16,7 @@ The Goal was accomplished in photoOrganizerScript.py
 
   This can be accomplished with "pip install -r requirements.txt" on the command line
 
-2. Place the photoorganizer script in the folder with images
+2. Place the photo-organizer script in the folder with images
 
 3. Run the photo organizer script! 
 
