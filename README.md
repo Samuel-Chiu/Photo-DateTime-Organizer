@@ -9,3 +9,14 @@ I accomplished this with:
   4. Generate a CSV with columns: {date: "mm-dd-yyyy", time: "hh-mm-ss", original_filename: "orig_path", id: "yyyy-mm-dd-###"}
 
 The Goal was accomplished in photoOrganizerScript.py 
+
+### Use Instructions
+
+1. Install required dependencies detailed in the requirements.txt file
+    a. This can be accomplished with "pip install -r requirements.txt" on the command line
+
+2. Place the photoorganizer script in the folder with images
+
+3. Run the photo organizer script! 
+
+
