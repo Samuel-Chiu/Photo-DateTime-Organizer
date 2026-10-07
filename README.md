@@ -1,4 +1,4 @@
-# Photo Database Sorter
+# Photo Organizer Script
 
 A Python script that turns folders of loosely named photos into chronologically ordered, consistently named copies, plus a CSV index mapping each new ID back to its original file.
 
