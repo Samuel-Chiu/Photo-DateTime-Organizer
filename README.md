@@ -1,4 +1,4 @@
-# Photo Organizer Script
+# Photo Date Time Organizer
 
 A Python script that turns folders of loosely named photos into chronologically ordered, consistently named copies, plus a CSV index mapping each new ID back to its original file.
 
