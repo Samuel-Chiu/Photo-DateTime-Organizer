@@ -7,10 +7,12 @@ my-photos/                                 my-photos/
 ├── Hawaii/                                ├── Hawaii/
 │   ├── IMG_4821.jpg                       │   ├── IMG_4821.jpg
 │   └── IMG_4822.jpg                       │   └── IMG_4822.jpg
+│                                          │
 └── Graduation/                            ├── hawaiiSorted/
     └── DSC_0001.jpg       ───────►        │   ├── hawaii-2023-05-01-001.jpg
                                            │   ├── hawaii-2023-05-01-002.jpg
                                            │   └── hawaii_image_data.csv
+                                           │
                                            └── Graduation/
                                                └── ...
 
@@ -51,11 +53,10 @@ For every target album subfolder, a new sorted directory named `<album>Sorted/` 
 
 1. **Album Detection:** Automatically processes top-level subfolders in the root directory. Hidden directories (starting with `.`) and existing output directories ending in `Sorted` are automatically skipped.
 2. **Date Source Priority:** Determines the exact capture date and time by evaluating metadata in the following hierarchy:
-1. EXIF `DateTimeOriginal`
-2. EXIF `DateTimeDigitized`
-3. EXIF `DateTime`
-4. File system creation/modification time (fallback when EXIF data is missing)
-
+    1. EXIF `DateTimeOriginal`
+    2. EXIF `DateTimeDigitized`
+    3. EXIF `DateTime`
+    4. File system creation/modification time (fallback when EXIF data is missing)
 
 3. **Sort Order:** Sorts images chronologically by capture time. If multiple photos share the exact same timestamp, the original filename is used as a tie-breaker.
 4. **Naming & Byte-for-Byte Copying:** Performs a lossless byte-for-byte copy (preserving original EXIF metadata) using the structure:
@@ -66,6 +67,7 @@ For every target album subfolder, a new sorted directory named `<album>Sorted/` 
 
 
 *The `<###>` sequence counter runs sequentially across the entire album in chronological order.*
+
 5. **CSV Indexing:** Generates `<album>_image_data.csv` inside each sorted output directory to map transformed files back to their source metadata:
 
 | Column | Example | Description |
