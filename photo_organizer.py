@@ -6,8 +6,11 @@ a sibling folder named ``<album>Sorted`` as ``<album>-<yyyy-mm-dd>-<###>.<ext>``
 A CSV index maps each new ID back to its original file. Originals are never
 modified.
 
+With --skip-duplicates, byte-identical copies within an album are left out of
+the sorted folder and listed in ``<album>_duplicates.csv`` instead.
+
 Usage:
-    python photo_organizer.py [ROOT]
+    python photo_organizer.py [ROOT] [--skip-duplicates]
 
 ROOT defaults to the folder this script lives in.
 """
@@ -16,7 +19,9 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import shutil
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -28,6 +33,9 @@ from PIL import Image, UnidentifiedImageError
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp", ".gif", ".bmp"}
 SORTED_SUFFIX = "Sorted"
 CSV_FIELDS = ["date", "time", "original_filename", "id", "date_source"]
+DUPLICATE_FIELDS = ["duplicate_filename", "kept_filename", "kept_id"]
+HASH_CHUNK_BYTES = 1024 * 1024  # read files 1 MB at a time when hashing
+
 
 # EXIF tag IDs. DateTimeOriginal and DateTimeDigitized live in the Exif
 # sub-IFD; DateTime (last modified) lives in the main IFD.
@@ -99,11 +107,55 @@ def load_album(album: Path) -> list[Photo]:
     return photos
 
 
-# Takes in: album folder path
+# Takes in: file path
+# Returns: the file's SHA-256 hash as a hex string
+# Purpose: Fingerprint a file's exact bytes so identical copies can be detected
+
+def file_hash(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(HASH_CHUNK_BYTES), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+# Takes in: list of Photo objects, already sorted
+# Returns: (photos to keep, list of (duplicate, kept photo) pairs)
+# Purpose: Find byte-identical copies. From each identical set, the photo with the shortest
+#          filename is kept, since copies usually gain a suffix ("IMG_1 copy.jpg", "IMG_1 (1).jpg").
+#          Only files that share a size are hashed, since different sizes can't match.
+
+def split_duplicates(photos: list[Photo]) -> tuple[list[Photo], list[tuple[Photo, Photo]]]:
+    size_counts = Counter(p.path.stat().st_size for p in photos)
+
+    groups: dict[tuple[int, str], list[Photo]] = {}
+    for photo in photos:
+        size = photo.path.stat().st_size
+        if size_counts[size] > 1:
+            groups.setdefault((size, file_hash(photo.path)), []).append(photo)
+
+    keeper_of: dict[Path, Photo] = {}
+    for group in groups.values():
+        keeper = min(group, key=lambda p: (len(p.path.name), p.path.name))
+        for photo in group:
+            keeper_of[photo.path] = keeper
+
+    unique, duplicates = [], []
+    for photo in photos:
+        keeper = keeper_of.get(photo.path, photo)
+        if keeper is photo:
+            unique.append(photo)
+        else:
+            duplicates.append((photo, keeper))
+
+    return unique, duplicates
+
+
+# Takes in: album folder path, and whether to skip byte-identical copies
 # Returns: the output folder path, or None if the album had no images
 # Purpose: Copy one album into its sorted folder with new names and write the CSV index
 
-def organize_album(album: Path) -> Path | None:
+def organize_album(album: Path, skip_duplicates: bool = False) -> Path | None:
     prefix = album.name.lower()
     photos = load_album(album)
 
@@ -111,12 +163,18 @@ def organize_album(album: Path) -> Path | None:
         print(f"{album.name}: no images found, skipping")
         return None
 
+    duplicates = []
+    if skip_duplicates:
+        photos, duplicates = split_duplicates(photos)
+
     output_dir = album.parent / f"{prefix}{SORTED_SUFFIX}"
     output_dir.mkdir(exist_ok=True)
 
     rows = []
+    ids_by_path = {}
     for number, photo in enumerate(photos, start=1):
         photo_id = f"{prefix}-{photo.taken:%Y-%m-%d}-{number:03d}"
+        ids_by_path[photo.path] = photo_id
 
         # copy2 keeps the original bytes and metadata; nothing is re-encoded.
         shutil.copy2(photo.path, output_dir / f"{photo_id}{photo.path.suffix.lower()}")
@@ -135,10 +193,34 @@ def organize_album(album: Path) -> Path | None:
         writer.writeheader()
         writer.writerows(rows)
 
+    # Log skipped duplicates; clear a stale log from an earlier run if there are none now.
+    duplicates_path = output_dir / f"{prefix}_duplicates.csv"
+    if duplicates:
+        with duplicates_path.open("w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=DUPLICATE_FIELDS)
+            writer.writeheader()
+            writer.writerows(
+                {
+                    "duplicate_filename": dup.path.name,
+                    "kept_filename": kept.path.name,
+                    "kept_id": ids_by_path[kept.path],
+                }
+                for dup, kept in duplicates
+            )
+    else:
+        duplicates_path.unlink(missing_ok=True)
+
+    notes = []
     fallback = sum(r["date_source"] == "file_modified" for r in rows)
-    note = f" ({fallback} dated by file time, no EXIF)" if fallback else ""
+    if fallback:
+        notes.append(f"{fallback} dated by file time, no EXIF")
+    if duplicates:
+        plural = "s" if len(duplicates) != 1 else ""
+        notes.append(f"{len(duplicates)} duplicate{plural} skipped")
+    note = f" ({'; '.join(notes)})" if notes else ""
     print(f"{album.name}: {len(rows)} photos -> {output_dir.name}/{note}")
     return output_dir
+
 
 
 # Takes in: root folder path
@@ -163,7 +245,14 @@ def main() -> None:
         default=Path(__file__).resolve().parent,
         help="folder containing one subfolder per album (default: this script's folder)",
     )
-    root = parser.parse_args().root.resolve()
+    parser.add_argument(
+        "--skip-duplicates",
+        action="store_true",
+        help="leave byte-identical copies out of the sorted folder and list them in "
+             "<album>_duplicates.csv",
+    )
+    args = parser.parse_args()
+    root = args.root.resolve()
 
     albums = find_albums(root)
     if not albums:
@@ -171,7 +260,8 @@ def main() -> None:
         return
 
     for album in albums:
-        organize_album(album)
+        organize_album(album, skip_duplicates=args.skip_duplicates)
+    
 
 
 if __name__ == "__main__":

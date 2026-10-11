@@ -1,5 +1,6 @@
 import csv
 import os
+import shutil
 from datetime import datetime
 
 from PIL import Image
@@ -23,6 +24,15 @@ def make_photo(path, original=None, modified=None, color="red"):
 def read_index(folder, name):
     with open(folder / f"{name}_image_data.csv", newline="") as f:
         return list(csv.DictReader(f))
+
+def make_album_with_duplicate(tmp_path):
+    """Album with IMG_1, an exact copy of it, and a different photo."""
+    album = tmp_path / "Trip"
+    album.mkdir()
+    make_photo(album / "IMG_1.jpg", original="2023:05:01 08:15:00", color="red")
+    shutil.copy(album / "IMG_1.jpg", album / "IMG_1 copy.jpg")
+    make_photo(album / "IMG_2.jpg", original="2023:05:01 08:15:00", color="blue")
+    return album
 
 
 # Tests -------------------------------------------------------------------------------------------
@@ -96,3 +106,39 @@ def test_find_albums_skips_output_and_hidden_folders(tmp_path):
     (tmp_path / "loose.jpg").write_bytes(b"")
     assert [a.name for a in po.find_albums(tmp_path)] == ["Graduation", "Hawaii"]
 
+# Asserts that the duplicates exist by default
+def test_duplicates_are_kept_by_default(tmp_path):
+    album = make_album_with_duplicate(tmp_path)
+    out = po.organize_album(album)
+    assert len(list(out.glob("*.jpg"))) == 3
+    assert not (out / "trip_duplicates.csv").exists()
+
+# Asserts that the copies are skipped and the original kept
+def test_skip_duplicates_copies_one_and_logs_the_rest(tmp_path):
+    album = make_album_with_duplicate(tmp_path)
+    out = po.organize_album(album, skip_duplicates=True)
+
+    # The shorter name (the original, not "IMG_1 copy.jpg") is the one kept.
+    rows = read_index(out, "trip")
+    assert [r["original_filename"] for r in rows] == ["IMG_1.jpg", "IMG_2.jpg"]
+    assert len(list(out.glob("*.jpg"))) == 2
+
+    with open(out / "trip_duplicates.csv", newline="") as f:
+        dupes = list(csv.DictReader(f))
+    assert dupes == [{
+        "duplicate_filename": "IMG_1 copy.jpg",
+        "kept_filename": "IMG_1.jpg",
+        "kept_id": "trip-2023-05-01-001",
+    }]
+    # Originals are never touched.
+    assert (album / "IMG_1.jpg").exists() and (album / "IMG_1 copy.jpg").exists()
+
+# Another test for duplicates 
+def test_same_size_different_content_is_not_a_duplicate(tmp_path):
+    a, b = tmp_path / "a.jpg", tmp_path / "b.jpg"
+    a.write_bytes(b"\x00" * 100)
+    b.write_bytes(b"\x01" * 100)
+    photos = [po.Photo(a, datetime(2023, 1, 1), "DateTime"),
+              po.Photo(b, datetime(2023, 1, 1), "DateTime")]
+    unique, duplicates = po.split_duplicates(photos)
+    assert unique == photos and duplicates == []

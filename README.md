@@ -1,5 +1,7 @@
 # Photo DateTime Organizer
 
+[![tests](https://github.com/Samuel-Chiu/Photo-DateTime-Organizer/actions/workflows/tests.yml/badge.svg)](https://github.com/Samuel-Chiu/Photo-DateTime-Organizer/actions/workflows/tests.yml)
+
 A Python tool that turns folders of loosely named photos into chronologically ordered, consistently named copies—preserving original EXIF metadata and logging a full tracking index in CSV.
 
 ```
@@ -78,7 +80,24 @@ For every target album subfolder, a new sorted directory named `<album>Sorted/` 
 | `id` | `hawaii-2023-05-01-001` | Unique generated file identifier |
 | `output_filename` | `hawaii-2023-05-01-001.jpg` | Final organized filename on disk |
 
+--- 
+
+## Skipping duplicates
+
+With `--skip-duplicates`, files in the same album that are byte-for-byte identical are copied only once. Two files count as duplicates only if every byte matches (compared by SHA-256 hash), so an edited or re-exported version of a photo is kept.
+
+From each set of identical files, the one with the shortest filename is kept, since copies usually gain a suffix (`IMG_1 copy.jpg`, `IMG_1 (1).jpg`). The skipped files are listed in `<album>_duplicates.csv`:
+
+| Column | Example |
+| --- | --- |
+| `duplicate_filename` | `IMG_1 (1).jpg` |
+| `kept_filename` | `IMG_1.jpg` |
+| `kept_id` | `hawaii-2023-05-01-001` |
+
+Nothing is deleted from the original album; delete the files listed in the CSV yourself if you want them gone. Without the flag, every file is copied, duplicates included.
+
 ---
+
 
 ## Notes
 
@@ -109,3 +128,6 @@ The test suite validates:
 * CSV index file generation and column structure integrity.
 
 Continuous Integration (CI) automatically executes the entire test suite on every `git push`.
+
+
+
