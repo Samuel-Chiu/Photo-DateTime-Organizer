@@ -1,2 +1,1 @@
-opencv-python
-pillow
+pillow>=10.0

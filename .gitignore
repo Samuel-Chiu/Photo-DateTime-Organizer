@@ -1,7 +1,19 @@
+# Personal photos and generated output: never commit these
 *.jpg
 *.jpeg
 *.png
 *.gif
-*.csv
+*.tif
+*.tiff
+*.webp
+*.heic
 *.psd
+*.csv
 *.doc
+*Sorted/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
