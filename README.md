@@ -1,60 +1,109 @@
-# Photo Date Time Organizer
+# Photo DateTime Organizer
 
-A Python script that turns folders of loosely named photos into chronologically ordered, consistently named copies, plus a CSV index mapping each new ID back to its original file.
+A Python tool that turns folders of loosely named photos into chronologically ordered, consistently named copies—preserving original EXIF metadata and logging a full tracking index in CSV.
 
-## Running it
+```
+my-photos/                                 my-photos/
+├── Hawaii/                                ├── Hawaii/
+│   ├── IMG_4821.jpg                       │   ├── IMG_4821.jpg
+│   └── IMG_4822.jpg                       │   └── IMG_4822.jpg
+└── Graduation/                            ├── hawaiiSorted/
+    └── DSC_0001.jpg       ───────►        │   ├── hawaii-2023-05-01-001.jpg
+                                           │   ├── hawaii-2023-05-01-002.jpg
+                                           │   └── hawaii_image_data.csv
+                                           └── Graduation/
+                                               └── ...
+
+```
+
+---
+
+## Quick start
+
+### Setup & Execution
 
 ```sh
-pip install -r requirements.txt   # first time only
-```
-
-Put the script in a parent folder, with one subfolder of photos per album:
-
-```
-my-photos/
-  photoOrganizerScript.py
-  Hawaii/        IMG_4821.jpg, IMG_4822.jpg, …
-  Graduation/    DSC_0001.jpg, …
-```
-
-Then run it:
-
-```sh
+pip install -r requirements.txt
 python photoOrganizerScript.py
+
 ```
 
-Each album gets a sorted copy next to it. The originals are never modified:
+### Input & Output Folder Layout
+
+Place `photoOrganizerScript.py` inside your main working folder alongside individual album subfolders:
 
 ```
 my-photos/
-  hawaiiSorted/
-    hawaii-2023-05-01-001.jpg
-    hawaii-2023-05-01-002.jpg
-    hawaii-2023-05-02-003.jpg
-    hawaii_image_data.csv
-  graduationSorted/
-    …
+├── photoOrganizerScript.py
+├── Hawaii/               # Album folder
+│   ├── IMG_4821.jpg
+│   └── IMG_4822.jpg
+└── Graduation/           # Album folder
+    └── DSC_0001.jpg
+
 ```
+
+For every target album subfolder, a new sorted directory named `<album>Sorted/` is generated right next to it. Original files and folders remain completely untouched.
+
+---
 
 ## How it works
 
-1. Loads every image in each subfolder with OpenCV.
-2. Reads the date taken from the photo's EXIF data (`DateTime`, `DateTimeOriginal`, or `DateTimeDigitized`) with Pillow.
-3. Sorts the album by date and time.
-4. Saves a copy of each photo named `<album>-<yyyy-mm-dd>-<###>.jpg`. The `###` counter runs across the whole album in chronological order.
-5. Writes `<album>_image_data.csv` with one row per photo:
+1. **Album Detection:** Automatically processes top-level subfolders in the root directory. Hidden directories (starting with `.`) and existing output directories ending in `Sorted` are automatically skipped.
+2. **Date Source Priority:** Determines the exact capture date and time by evaluating metadata in the following hierarchy:
+1. EXIF `DateTimeOriginal`
+2. EXIF `DateTimeDigitized`
+3. EXIF `DateTime`
+4. File system creation/modification time (fallback when EXIF data is missing)
 
-| Column | Example |
-| --- | --- |
-| `date` | `2023-05-01` |
-| `time` | `08-15-00` |
-| `original_filename` | `IMG_4821.jpg` |
-| `id` | `hawaii-2023-05-01-001` |
+
+3. **Sort Order:** Sorts images chronologically by capture time. If multiple photos share the exact same timestamp, the original filename is used as a tie-breaker.
+4. **Naming & Byte-for-Byte Copying:** Performs a lossless byte-for-byte copy (preserving original EXIF metadata) using the structure:
+```
+<album>-<yyyy-mm-dd>-<###>.<ext>
+
+```
+
+
+*The `<###>` sequence counter runs sequentially across the entire album in chronological order.*
+5. **CSV Indexing:** Generates `<album>_image_data.csv` inside each sorted output directory to map transformed files back to their source metadata:
+
+| Column | Example | Description |
+| --- | --- | --- |
+| `date` | `2023-05-01` | Image capture date (`YYYY-MM-DD`) |
+| `time` | `08:15:00` | Image capture time (`HH:MM:SS`) |
+| `original_filename` | `IMG_4821.jpg` | Source filename before organizing |
+| `id` | `hawaii-2023-05-01-001` | Unique generated file identifier |
+| `output_filename` | `hawaii-2023-05-01-001.jpg` | Final organized filename on disk |
+
+---
 
 ## Notes
 
-- **Every photo needs an EXIF date.** Screenshots, downloaded images, or edited exports that have lost their metadata will stop the script.
-- **Only top-level subfolders are albums.** Images sitting next to the script are ignored, and subfolders nested inside an album are not supported.
-- **Copies are re-encoded as `.jpg` without EXIF metadata,** because they are written with OpenCV. The CSV keeps the date and time.
-- Formats OpenCV can't read (such as HEIC) are skipped.
-- Folders whose names end in `Sorted` are skipped, so it's safe to rerun. Reruns overwrite the previous sorted copies.
+* **Supported Formats:** Works with standard image formats (e.g., JPEG, PNG, TIFF, WebP).
+* **Nested Folders:** Only immediate top-level subfolders are treated as albums. Subfolders nested deeper inside an album are not scanned.
+* **Rerun Behavior:** If an output folder `<album>Sorted/` already exists, remove or clear it before rerunning to prevent stale file accumulation or duplicate processing.
+
+---
+
+## Development
+
+### Setup Dev Environment & Run Tests
+
+```sh
+pip install -r requirements-dev.txt
+pytest
+
+```
+
+### Test Coverage & CI
+
+The test suite validates:
+
+* Correct album detection and folder filtering.
+* EXIF date metadata extraction, priority fallback ordering, and file time handling.
+* Chronological sorting accuracy and filename tie-breaking.
+* File naming conventions and byte-for-byte copy fidelity.
+* CSV index file generation and column structure integrity.
+
+Continuous Integration (CI) automatically executes the entire test suite on every `git push`.
